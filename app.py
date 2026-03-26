@@ -19,6 +19,7 @@ app.secret_key = os.getenv("SECRET_KEY")
 EMAIL_ENABLED = os.getenv("EMAIL_ENABLED") == "True"
 SENDER_EMAIL = os.getenv("SENDER_EMAIL")
 SENDER_APP_PASSWORD = os.getenv("SENDER_APP_PASSWORD")
+SMTP_PORT=os.getenv("SMTP_PORT")
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PDF_FOLDER = os.path.join(BASE_DIR, "pdfs")
