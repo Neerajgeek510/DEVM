@@ -1,0 +1,15 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>OTP Verify</title><link rel="stylesheet" href="/static/style.css">
+<meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body>
+<div class="card">
+  <h3>Enter OTP</h3>
+  {% if error %}<div class="error">{{ error }}</div>{% endif %}
+  <form method="post">
+    <input type="text" name="otp" placeholder="Enter OTP" required><br>
+    <button>Verify OTP</button>
+  </form>
+</div>
+</body>
+</html>

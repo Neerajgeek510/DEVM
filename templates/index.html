@@ -1,0 +1,46 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>DEVM — Digital E-Voting</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+</head>
+<body>
+  <div class="top-ticker">DEVM — Digital Electronic Voting & Accessibility Portal</div>
+
+  <div class="center-wrap">
+    <div class="card">
+      <h2>Digital Electronic Voting Portal</h2>
+      <p class="tag">"मेरा वोट – मेरा अधिकार"</p>
+
+      {% if error %}
+        <div class="error">{{ error }}</div>
+      {% endif %}
+
+      <form method="post" id="mainForm">
+        <input type="hidden" name="action" value="send_otp">
+        <input type="email" name="email" placeholder="Enter Email" required class="fld"><br>
+        <input type="date" name="dob"  placeholder="Enter your DOB" required class="fld"><br>
+        <input type="text" name="aadhaar" placeholder="Enter Aadhaar (12 digits)" pattern="[0-9]{12}" required class="fld" maxlength="12"><br>
+        <button type="submit" class="submit-btn">Send OTP</button>
+      </form>
+
+      <!-- OTP area: visible only after OTP sent -->
+      {% if otp_sent %}
+      <div class="otp-area">
+        <h4>Enter OTP (sent to {{ email }})</h4>
+        {% if error %}<div class="error">{{ error }}</div>{% endif %}
+        <form method="post" action="/verify_otp">
+          <input type="text" name="otp" placeholder="Enter OTP" required class="fld"><br>
+          <button type="submit" class="submit-btn">Verify OTP & Continue</button>
+        </form>
+      </div>
+      {% endif %}
+
+      <p class="note">Accessibility: Voice voting available on next page. Ensure microphone allowed in browser.</p>
+    </div>
+  </div>
+</body>
+</html>

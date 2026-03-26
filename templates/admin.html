@@ -1,0 +1,51 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Admin — Votes</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+<div class="top-header">Admin Dashboard</div>
+
+<div class="list-area" style="max-width:1000px;margin:20px auto;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+    <div>
+      <strong>Vote Summary:</strong>
+      {% for candidate, count in counts.items() %}
+        <span style="margin-left:12px;">{{ candidate }}: <strong>{{ count }}</strong></span>
+      {% endfor %}
+    </div>
+    <div>
+      <a href="/admin/download_csv"><button class="submit-btn" style="padding:8px 12px">Download CSV</button></a>
+      <a href="/admin/logout"><button class="mic-btn" style="background:#d9534f">Logout</button></a>
+    </div>
+  </div>
+
+  <table style="width:100%;border-collapse:collapse">
+    <thead>
+      <tr style="background:#f0f0f0">
+        <th style="padding:10px;border:1px solid #ddd;text-align:left">Email</th>
+        <th style="padding:10px;border:1px solid #ddd;text-align:left">Aadhaar (masked)</th>
+        <th style="padding:10px;border:1px solid #ddd;text-align:left">Candidate</th>
+        <th style="padding:10px;border:1px solid #ddd;text-align:left">Time</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for e,a,c,t in data %}
+      <tr>
+        <td style="padding:10px;border:1px solid #eee">{{ e }}</td>
+        <td style="padding:10px;border:1px solid #eee">{{ a }}</td>
+        <td style="padding:10px;border:1px solid #eee">{{ c }}</td>
+        <td style="padding:10px;border:1px solid #eee">{{ t }}</td>
+      </tr>
+      {% endfor %}
+      {% if not data %}
+      <tr><td colspan="4" style="padding:12px;text-align:center;color:#666">No votes yet</td></tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+</body>
+</html>

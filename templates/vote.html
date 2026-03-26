@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<title>DEVM — Vote</title>
+<link rel="stylesheet" href="/static/style.css">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+
+<body>
+  {% if error %}
+<div style="color:red; text-align:center;">
+  {{ error }}
+</div>
+{% endif %}
+
+<div class="top-header" style="text-align:center;">
+  DEVM — Digital Electronic Voting
+  <div class="sub" style="font-size:14px;font-weight:600;">
+    🎤 Mic दबाएँ और बोलें — एक / दो / तीन / चार
+  </div>
+</div>
+
+<form method="post" action="/vote" class="list-area" id="voteForm">
+
+<!-- Candidate 1 -->
+  <div class="row">
+    <input type="radio" name="candidate" value="Maharana Pratap">
+    <img src="/static/pratab.jpg">
+    <div class="info">
+      <div class="name">Maharana Pratap</div>
+      <div class="desc">Experienced leader with a vision for the future and a great warrior.</div>
+    </div>
+  </div>
+
+  <!-- Candidate 2 -->
+  <div class="row">
+    <input type="radio" name="candidate" value="Chandrashekhar Aazad">
+    <img src="/static/chndra.jpg">
+    <div class="info">
+      <div class="name">Chandrashekhar Aazad</div>
+      <div class="desc">A great freedom fighter and a visionary leader.</div>
+    </div>
+  </div>
+
+  <!-- Candidate 3 -->
+  <div class="row">
+    <input type="radio" name="candidate" value="Bhagat Singh">
+    <img src="/static/bhagatsingh.jpg">
+    <div class="info">
+      <div class="name">Bhagat Singh</div>
+      <div class="desc">A fearless revolutionary who chose ideas over life.</div>
+    </div>
+  </div>
+
+  <!-- Candidate 4 -->
+  <div class="row">
+    <input type="radio" name="candidate" value="Chhatrapati Shivaji Maharaj">
+    <img src="/static/shiva.jpeg">
+    <div class="info">
+      <div class="name">Chhatrapati Shivaji Maharaj</div>
+      <div class="desc">Founder of the Maratha Empire, known for his bravery.</div>
+    </div>
+  </div>
+
+  <button type="button" class="mic-btn" id="micBtn" onclick="startVoice()">🎤 बोलकर वोट दें</button>
+  <button type="submit" class="submit-btn">Submit Vote</button>
+</form>
+
+
+<div class="bottom-bar">
+  आपका एक वोट देश का भविष्य बदल सकता है 🇮🇳
+</div>
+
+<!-- ================= VOICE SCRIPT ================= -->
+<script>
+/*
+ Robust voice flow:
+ - Request mic permission first (getUserMedia) to ensure browser will allow recognition
+ - Speak instructions (TTS) using a preferred Hindi voice if available
+ - Start SpeechRecognition only after TTS ends (or fallback short delay)
+ - Give visible feedback by changing mic button text
+ - Log lots of info to console for debugging
+*/
+
+let rec = null;
+let currentVoice = null;
+
+function chooseVoicePref() {
+  const vs = speechSynthesis.getVoices();
+  if (!vs || vs.length === 0) return null;
+  let pref = vs.find(v => /aditi|hi-in|hindi|india|google/i.test(v.name) || (v.lang && /hi/.test(v.lang)));
+  return pref || vs[0];
+}
+speechSynthesis.onvoiceschanged = function(){ currentVoice = chooseVoicePref(); };
+
+// speak helper that calls callback when finished (or after timeout)
+function speakWithCallback(text, cb) {
+  try {
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "hi-IN";
+    u.rate = 0.95;
+    if (!currentVoice) currentVoice = chooseVoicePref();
+    if (currentVoice) u.voice = currentVoice;
+    u.onend = function(){ if (cb) cb(); };
+    u.onerror = function(e){ console.log("TTS error:", e); if(cb) cb(); };
+    speechSynthesis.cancel();
+    speechSynthesis.speak(u);
+    // safety fallback in case onend doesn't fire
+    setTimeout(() => { if (cb) cb(); }, 5000);
+  } catch (e) {
+    console.log("TTS exception:", e);
+    if (cb) cb();
+  }
+}
+
+// attempt to get mic permission first
+async function ensureMicPermission() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    console.log("getUserMedia not available");
+    return false;
+  }
+  try {
+    // request mic once (this shows permission prompt)
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    // immediately stop tracks (we only wanted permission)
+    stream.getTracks().forEach(t => t.stop());
+    console.log("Mic permission granted via getUserMedia");
+    return true;
+  } catch (e) {
+    console.log("Mic permission denied or error:", e);
+    return false;
+  }
+}
+
+// UI helper: set mic button text
+function setMicText(text) {
+  const b = document.getElementById('micBtn');
+  if (b) b.textContent = text;
+}
+
+// main: speak instructions -> then listen -> then confirm -> submit
+async function startVoice() {
+  setMicText("Preparing...");
+
+  // Basic support checks
+  if (!('speechSynthesis' in window)) {
+    alert("TTS not supported. Use Chrome.");
+    setMicText("🎤 बोलकर वोट दें");
+    return;
+  }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    alert("SpeechRecognition not supported. Use Chrome (desktop).");
+    setMicText("🎤 बोलकर वोट दें");
+    return;
+  }
+
+  // ensure mic permission first (avoids silent failures)
+  const micOk = await ensureMicPermission();
+  if (!micOk) {
+    alert("Microphone permission is required. Please allow microphone access for this site.");
+    setMicText("🎤 बोलकर वोट दें");
+    return;
+  }
+
+  // instruction text
+  const instruction = "एक के लिए महाराणा प्रताप। दो के लिए चंद्रशेखर आज़ाद। तीन के लिए भगत सिंह। चार के लिए छत्रपति शिवाजी महाराज। अब बोलिए।";
+
+  // speak, then start recognition
+  setMicText("Speaking instructions...");
+  speakWithCallback(instruction, function() {
+    // when TTS ends, start recognition
+    try {
+      setMicText("Listening...");
+      rec = new SR();
+      rec.lang = "hi-IN";
+      rec.continuous = false;
+      rec.interimResults = false;
+      rec.maxAlternatives = 1;
+
+      rec.onstart = () => console.log("Recognition started");
+      rec.onend = () => {
+        console.log("Recognition ended");
+        // reset mic button text (if not changed)
+        setMicText("🎤 बोलकर वोट दें");
+      };
+
+      rec.onresult = function(ev) {
+        const txt = ev.results[0][0].transcript.toLowerCase().trim();
+        console.log("Heard:", txt);
+
+        // mapping
+        let chosen = null;
+        if (/\b(1|one|ek|एक)\b/.test(txt) || txt.includes("प्रताप") || txt.includes("pratap")) chosen = "Maharana Pratap";
+        else if (/\b(2|two|do|दो)\b/.test(txt) || txt.includes("आजाद") || txt.includes("aazad")) chosen = "Chandrashekhar Aazad";
+        else if (/\b(3|three|teen|तीन)\b/.test(txt) || txt.includes("भगत")) chosen = "Bhagat Singh";
+        else if (/\b(4|four|char|चार)\b/.test(txt) || txt.includes("शिवाजी") || txt.includes("shivaji")) chosen = "Chhatrapati Shivaji Maharaj";
+
+        if (!chosen) {
+          console.log("No candidate matched for:", txt);
+          speakWithCallback("समझ नहीं आया। कृपया एक, दो, तीन या चार स्पष्ट बोलिए।");
+          return;
+        }
+
+        // set radio
+        const radios = document.getElementsByName("candidate");
+        let found = false;
+        for (let r of radios) {
+          if (r.value === chosen) { r.checked = true; found = true; break; }
+        }
+        if (!found) {
+          // fuzzy fallback
+          for (let r of radios) {
+            if (r.value.toLowerCase().includes(chosen.split(" ")[0].toLowerCase())) { r.checked = true; found = true; break; }
+          }
+        }
+
+        // confirm and submit
+        speakWithCallback(chosen + " को वोट दिया जा रहा है।", function(){
+          console.log("Confirmed:", chosen);
+          setMicText("Submitting...");
+          const submitBtn = document.querySelector('button[type="submit"]');
+          if (submitBtn) {
+            submitBtn.click();
+            console.log("Clicked submit");
+          } else {
+            const f = document.getElementById("voteForm");
+            if (f) f.submit();
+            console.log("Form.submit fallback used");
+          }
+        });
+      };
+
+      rec.onerror = function(err) {
+        console.log("Recognition error:", err);
+        speakWithCallback("माइक्रोफ़ोन में समस्या आई। कृपया अनुमति दें और फिर से प्रयास करें।");
+        setMicText("🎤 बोलकर वोट दें");
+      };
+
+      // start recognizing
+      try {
+        rec.start();
+      } catch (e) {
+        console.log("rec.start error:", e);
+        speakWithCallback("माइक्रोफ़ोन शुरू नहीं हो सका।");
+        setMicText("🎤 बोलकर वोट दें");
+      }
+    } catch (e) {
+      console.log("Recognition setup error:", e);
+      speakWithCallback("रिकॉग्निशन प्रारंभ करने में त्रुटि हुई।");
+      setMicText("🎤 बोलकर वोट दें");
+    }
+  });
+}
+</script>
+
+
+</body>
+</html>
