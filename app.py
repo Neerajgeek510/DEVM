@@ -283,7 +283,7 @@ def vote():
     return render_template("vote.html", candidates=list(CANDIDATE_PDFS.keys()))   
 @app.route("/download_db")
 def download_db():
-    return send_from_directory(".", "database.db", as_attachment=True)
+    return send_from_directory(os.path.dirname(DB_PATH), "database.db", as_attachment=True)
 
 # ---------- ADMIN ----------
 @app.route("/admin_login", methods=["GET","POST"])
