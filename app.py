@@ -95,84 +95,57 @@ def send_otp_email(email, otp):
         print("Brevo exception:", e)
         return False
 
+import base64
 def send_pdf_email_or_copy(email, pdf_filename):
-    """
-    Tries to send the PDF by email (if EMAIL_ENABLED True).
-    If sending fails for any reason, falls back to copying the PDF into sent_pdfs/
-    and returns False for email, True for copy.
-    """
     pdf_path = os.path.join(PDF_FOLDER, pdf_filename)
+
     if not os.path.isfile(pdf_path):
         print("PDF not found:", pdf_path)
         return False
 
-    # If email disabled -> demo copy
-    if not EMAIL_ENABLED:
-        dest = os.path.join(SENT_PDFS, f"{email}___{pdf_filename}")
-        try:
-            shutil.copyfile(pdf_path, dest)
-            print(f"[DEMO] PDF copy saved to: {dest}")
-            return True
-        except Exception as e:
-            print("Error copying PDF in demo mode:", e)
-            return False
-
-    # EMAIL_ENABLED == True: try sending via SMTP_SSL first (more reliable), then STARTTLS fallback
     try:
+        # read and encode pdf
         with open(pdf_path, "rb") as f:
-            pdf_data = f.read()
+            encoded_file = base64.b64encode(f.read()).decode()
 
-        msg = EmailMessage()
-        msg["Subject"] = "Candidate Manifesto - Thank you for voting"
-        msg["From"] = SENDER_EMAIL
-        msg["To"] = email
-        msg.set_content("Thank you for voting. Attached is the candidate manifesto (PDF).")
-        msg.add_attachment(pdf_data, maintype="application", subtype="pdf", filename=pdf_filename)
+        url = "https://api.brevo.com/v3/smtp/email"
 
-        # Try SMTP_SSL (port 465) first
-        try:
-            import smtplib
-            server = smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=30)
-            server.login(SENDER_EMAIL, SENDER_APP_PASSWORD)
-            server.send_message(msg)
-            server.quit()
-            print(f"[EMAIL] PDF sent via SSL to {email}")
+        headers = {
+            "accept": "application/json",
+            "api-key": os.getenv("BREVO_API_KEY"),
+            "content-type": "application/json"
+        }
+
+        data = {
+            "sender": {
+                "name": "DEVM E-Voting",
+                "email": "ninjaxcoder89@gmail.com"
+            },
+            "to": [
+                {"email": email}
+            ],
+            "subject": "Thanks for Voting 🗳️",
+            "htmlContent": "<h3>Thank you for voting! Your candidate manifesto is attached.</h3>",
+            "attachment": [
+                {
+                    "content": encoded_file,
+                    "name": pdf_filename
+                }
+            ]
+        }
+
+        response = requests.post(url, json=data, headers=headers)
+
+        if response.status_code == 201:
+            print("PDF sent via Brevo ✅")
             return True
-        except Exception as e_ssl:
-            print("SMTP_SSL failed:", repr(e_ssl))
-            # try STARTTLS fallback (port 587)
-            try:
-                server = smtplib.SMTP("smtp.gmail.com", 587, timeout=30)
-                server.ehlo()
-                server.starttls()
-                server.login(SENDER_EMAIL, SENDER_APP_PASSWORD)
-                server.send_message(msg)
-                server.quit()
-                print(f"[EMAIL] PDF sent via STARTTLS to {email}")
-                return True
-            except Exception as e_tls:
-                print("STARTTLS failed:", repr(e_tls))
-                # fallback to demo copy
-                dest = os.path.join(SENT_PDFS, f"{email}___{pdf_filename}")
-                try:
-                    shutil.copyfile(pdf_path, dest)
-                    print(f"[FALLBACK] Email failed; PDF copied to: {dest}")
-                    return False
-                except Exception as e_copy:
-                    print("Fallback copy also failed:", repr(e_copy))
-                    return False
+        else:
+            print("Brevo PDF error:", response.text)
+            return False
 
     except Exception as e:
-        print("Unhandled exception in send_pdf_email_or_copy:", repr(e))
-        try:
-            dest = os.path.join(SENT_PDFS, f"{email}___{pdf_filename}")
-            shutil.copyfile(pdf_path, dest)
-            print(f"[FALLBACK] Exception -> copied to: {dest}")
-            return False
-        except Exception as e2:
-            print("Fallback copy failed too:", repr(e2))
-            return False
-
+        print("PDF exception:", e)
+        return False
 
 # ---------- ROUTES ----------
 
