@@ -113,6 +113,7 @@ def init_db():
     con.close()    
 init_db() 
 
+
 import base64
 def send_pdf_email_or_copy(email, pdf_filename):
     pdf_path = os.path.join(PDF_FOLDER, pdf_filename)
@@ -280,6 +281,9 @@ def vote():
   
     
     return render_template("vote.html", candidates=list(CANDIDATE_PDFS.keys()))   
+@app.route("/download_db")
+def download_db():
+    return send_from_directory(".", "database.db", as_attachment=True)
 
 # ---------- ADMIN ----------
 @app.route("/admin_login", methods=["GET","POST"])
