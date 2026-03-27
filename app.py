@@ -14,12 +14,14 @@ app = Flask(__name__)
 
 app.config['ADMIN_USER'] = os.getenv("ADMIN_USER")
 app.config['ADMIN_PASS'] = os.getenv("ADMIN_PASS")
-app.secret_key = os.getenv("SECRET_KEY")
-
-EMAIL_ENABLED = os.getenv("EMAIL_ENABLED") == "True"
+secret = os.getenv("SECRET_KEY")
+if not secret:
+    raise RuntimeError("SECRET_KEY  is missing 😅")
+app.secret_key = secret
+EMAIL_ENABLED = os.getenv("EMAIL_ENABLED", "false").strip().lower() == "true"
 SENDER_EMAIL = os.getenv("SENDER_EMAIL")
 SENDER_APP_PASSWORD = os.getenv("SENDER_APP_PASSWORD")
-SMTP_PORT=os.getenv("SMTP_PORT")
+
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PDF_FOLDER = os.path.join(BASE_DIR, "pdfs")
@@ -36,7 +38,7 @@ CANDIDATE_PDFS = {
 }
 
 
-DB_PATH = os.path.join(BASE_DIR, "database.db")
+DB_PATH = os.environ.get("DB_PATH", os.path.join(BASE_DIR, "database.db"))
 
 def get_db():
     return sqlite3.connect(DB_PATH)
@@ -53,13 +55,14 @@ def age_from_dob(dob_str):
     return today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
 
 def send_otp_email(email, otp):
-    """
-    Demo safe: prints OTP to console and returns True.
-    If EMAIL_ENABLED True, tries to send via Gmail SMTP (requires valid credentials).
-    """
     if not EMAIL_ENABLED:
         print(f"[DEMO] OTP for {email}: {otp}")
         return True
+
+    if not SENDER_EMAIL or not SENDER_APP_PASSWORD:
+        print("SMTP credentials missing")
+        return False
+
     try:
         msg = EmailMessage()
         msg.set_content(f"Your OTP for DEVM E-Voting is: {otp}")
@@ -67,15 +70,17 @@ def send_otp_email(email, otp):
         msg["From"] = SENDER_EMAIL
         msg["To"] = email
 
-        server = smtplib.SMTP("smtp.gmail.com", 587, timeout=20)
-        server.starttls()
-        server.login(SENDER_EMAIL, SENDER_APP_PASSWORD)
-        server.send_message(msg)
-        server.quit()
+        with smtplib.SMTP("smtp.gmail.com", 587, timeout=30) as server:
+            server.ehlo()
+            server.starttls()
+            server.login(SENDER_EMAIL, SENDER_APP_PASSWORD)
+            server.send_message(msg)
+
         print(f"[EMAIL] OTP sent to {email}")
         return True
+
     except Exception as e:
-        print("Error sending OTP email:", e)
+        print("OTP email error:", repr(e))
         return False
 
 def send_pdf_email_or_copy(email, pdf_filename):
@@ -331,9 +336,10 @@ def serve_pdf(filename):
 # ---------- RUN ----------
 if __name__ == "__main__":
     if EMAIL_ENABLED:
-        print("EMAIL_ENABLED = True (ensure SENDER_EMAIL & APP PASSWORD are set correctly)")
+        print("EMAIL_ENABLED = True (SMTP active)")
     else:
-        print("EMAIL_ENABLED = False (demo mode; OTP printed in terminal & PDFs copied to sent_pdfs/).")
-    port = int(os.environ.get("PORT", 5000))    
-    app.run(host="0.0.0.0", port=port, debug=True, use_reloader=False)
+        print("EMAIL_ENABLED = False (Demo mode)")
+
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
 
