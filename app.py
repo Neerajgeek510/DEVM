@@ -54,33 +54,45 @@ def age_from_dob(dob_str):
     today = date.today()
     return today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
 
+import requests
+
 def send_otp_email(email, otp):
     if not EMAIL_ENABLED:
         print(f"[DEMO] OTP for {email}: {otp}")
         return True
 
-    if not SENDER_EMAIL or not SENDER_APP_PASSWORD:
-        print("SMTP credentials missing")
-        return False
-
     try:
-        msg = EmailMessage()
-        msg.set_content(f"Your OTP for DEVM E-Voting is: {otp}")
-        msg["Subject"] = "DEVM E-Voting OTP"
-        msg["From"] = SENDER_EMAIL
-        msg["To"] = email
+        url = "https://api.brevo.com/v3/smtp/email"
 
-        with smtplib.SMTP("smtp.gmail.com", 587, timeout=30) as server:
-            server.ehlo()
-            server.starttls()
-            server.login(SENDER_EMAIL, SENDER_APP_PASSWORD)
-            server.send_message(msg)
+        headers = {
+            "accept": "application/json",
+            "api-key": os.getenv("BREVO_API_KEY"),
+            "content-type": "application/json"
+        }
 
-        print(f"[EMAIL] OTP sent to {email}")
-        return True
+        data = {
+            "sender": {
+                "name": "DEVM E-Voting",
+                "email": "ninjaxcoder89@gmail.com"
+            },
+            "to": [
+                {"email": email}
+            ],
+            "subject": "DEVM E-Voting OTP",
+            "htmlContent": f"<h2>Your OTP is: {otp}</h2>"
+        }
+
+        response = requests.post(url, json=data, headers=headers)
+
+        if response.status_code == 201:
+            print("OTP sent via Brevo ✅")
+            return True
+        else:
+            print("Brevo error:", response.text)
+            return False
 
     except Exception as e:
-        print("OTP email error:", repr(e))
+        print("Brevo exception:", e)
         return False
 
 def send_pdf_email_or_copy(email, pdf_filename):
