@@ -44,7 +44,7 @@ def get_db():
     return sqlite3.connect(DB_PATH)
 @app.route("/")
 def home():
-     return "app is working" # render_template("home.html")
+     return render_template("home.html")
 # @app.route("/index")
 # def index():
 #     return render_template("index.html")
