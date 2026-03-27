@@ -12,6 +12,7 @@ load_dotenv()
 app = Flask(__name__)
 
 
+
 app.config['ADMIN_USER'] = os.getenv("ADMIN_USER")
 app.config['ADMIN_PASS'] = os.getenv("ADMIN_PASS")
 secret = os.getenv("SECRET_KEY")
@@ -94,6 +95,23 @@ def send_otp_email(email, otp):
     except Exception as e:
         print("Brevo exception:", e)
         return False
+def init_db():
+    con = sqlite3.connect(DB_PATH)
+    cur = con.cursor()
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS votes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT,
+        aadhaar TEXT UNIQUE,
+        candidate TEXT,
+        time TEXT
+    )
+    """)
+
+    con.commit()
+    con.close()    
+init_db() 
 
 import base64
 def send_pdf_email_or_copy(email, pdf_filename):
