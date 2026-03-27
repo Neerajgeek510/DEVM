@@ -281,10 +281,18 @@ def vote():
   
     
     return render_template("vote.html", candidates=list(CANDIDATE_PDFS.keys()))   
-@app.route("/download_db")
-def download_db():
-    return send_from_directory(os.path.dirname(DB_PATH), "database.db", as_attachment=True)
-
+# @app.route("/download_db")
+# def download_db():
+#     return send_from_directory(os.path.dirname(DB_PATH), "database.db", as_attachment=True)
+@app.route("/show_votes")
+def show_votes():
+    import sqlite3
+    conn = sqlite3.connect("database.db")
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM votes")
+    data = cur.fetchall()
+    conn.close()
+    return str(data)
 # ---------- ADMIN ----------
 @app.route("/admin_login", methods=["GET","POST"])
 def admin_login():
