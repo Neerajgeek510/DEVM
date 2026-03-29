@@ -1,4 +1,5 @@
 flask
 gunicorn
 python-dotenv
-Requests
+requests
+psycopg2-binary
