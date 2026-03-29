@@ -6,6 +6,7 @@ import smtplib
 from email.message import EmailMessage
 from dotenv import load_dotenv
 import os
+import psycopg2
 
 load_dotenv()
 
@@ -39,10 +40,10 @@ CANDIDATE_PDFS = {
 }
 
 
-DB_PATH = os.environ.get("DB_PATH", os.path.join(BASE_DIR, "database.db"))
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 def get_db():
-    return sqlite3.connect(DB_PATH)
+    return psycopg2.connect(DATABASE_URL)
 @app.route("/")
 def home():
      return render_template("home.html")
@@ -96,7 +97,7 @@ def send_otp_email(email, otp):
         print("Brevo exception:", e)
         return False
 def init_db():
-    con = sqlite3.connect(DB_PATH)
+    con = sqlite3.connect(os.O_PATH)
     cur = con.cursor()
 
     cur.execute("""
@@ -238,10 +239,10 @@ def vote():
             timestamp = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
 
             # Try DB insert with explicit logging and exception handling
-            con = sqlite3.connect(DB_PATH)
+            con = get_db()
             cur = con.cursor()
             try:
-                cur.execute("INSERT INTO votes(email,aadhaar,candidate,time) VALUES(?,?,?,?)",
+                cur.execute("INSERT INTO votes(email,aadhaar,candidate,time) VALUES(%s,%s,%s,%s)",
                             (email, aadhaar, candidate, timestamp))
                 con.commit()
                 print("DEBUG: DB insert SUCCESS")
@@ -347,6 +348,22 @@ def admin_logout():
 @app.route("/pdfs/<path:filename>")
 def serve_pdf(filename):
     return send_from_directory(PDF_FOLDER, filename, as_attachment=False)
+@app.route("/initdb")
+def initdb():
+    con = get_db()
+    cur = con.cursor()
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS votes (
+        id SERIAL PRIMARY KEY,
+        email TEXT,
+        aadhaar TEXT UNIQUE,
+        candidate TEXT,
+        time TEXT
+    )
+    """)
+    con.commit()
+    con.close()
+    return "DB Ready"
 
 # ---------- RUN ----------
 if __name__ == "__main__":
