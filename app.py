@@ -1,9 +1,7 @@
 
 from flask import Flask, render_template, request, redirect, session, send_from_directory, Response
-import sqlite3, random, os, shutil, csv, io
+import random, os, shutil, csv, io
 from datetime import datetime, date
-import smtplib
-from email.message import EmailMessage
 from dotenv import load_dotenv
 import os
 import psycopg2
@@ -96,23 +94,7 @@ def send_otp_email(email, otp):
     except Exception as e:
         print("Brevo exception:", e)
         return False
-def init_db():
-    con = sqlite3.connect(os.O_PATH)
-    cur = con.cursor()
 
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS votes (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        email TEXT,
-        aadhaar TEXT UNIQUE,
-        candidate TEXT,
-        time TEXT
-    )
-    """)
-
-    con.commit()
-    con.close()    
-init_db() 
 
 
 import base64
@@ -206,7 +188,8 @@ def verify_otp():
 
 # Vote page
 # REPLACE your existing /vote route with this block in app.py
-from sqlite3 import IntegrityError
+import psycopg2
+from psycopg2 import errors
 import traceback
 
 @app.route("/vote", methods=["GET","POST"])
@@ -246,9 +229,9 @@ def vote():
                             (email, aadhaar, candidate, timestamp))
                 con.commit()
                 print("DEBUG: DB insert SUCCESS")
-            except IntegrityError as ie:
+            except errors.UniqueViolation as e:
                 con.rollback()
-                print("DB IntegrityError (probably duplicate aadhaar):", ie)
+                print("DB IntegrityError (probably duplicate aadhaar):", e)
                 con.close()
                 # render vote.html with message
                 return render_template("vote.html", error="This Aadhaar has already voted.", candidates=list(CANDIDATE_PDFS.keys()))
@@ -285,15 +268,7 @@ def vote():
 # @app.route("/download_db")
 # def download_db():
 #     return send_from_directory(os.path.dirname(DB_PATH), "database.db", as_attachment=True)
-@app.route("/show_votes")
-def show_votes():
-    import sqlite3
-    conn = sqlite3.connect("database.db")
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM votes")
-    data = cur.fetchall()
-    conn.close()
-    return str(data)
+
 # ---------- ADMIN ----------
 @app.route("/admin_login", methods=["GET","POST"])
 def admin_login():
@@ -312,7 +287,8 @@ def admin():
         return redirect("/admin_login")
     con = get_db()
     cur = con.cursor()
-    rows = cur.execute("SELECT email,aadhaar,candidate,time FROM votes ORDER BY id DESC").fetchall()
+    cur.execute("SELECT email,aadhaar,candidate,time FROM votes ORDER BY id DESC")
+    rows = cur.fetchall()
     con.close()
     # mask aadhaar for display
     data = [(e, ("XXXX-XXXX-" + (a[-4:] if a and len(a) >= 4 else a)), c, t) for (e, a, c, t) in rows]
@@ -328,7 +304,8 @@ def admin_download_csv():
         return redirect("/admin_login")
     con = get_db()
     cur = con.cursor()
-    rows = cur.execute("SELECT email,aadhaar,candidate,time FROM votes ORDER BY id DESC").fetchall()
+    cur.execute("SELECT email,aadhaar,candidate,time FROM votes ORDER BY id DESC")
+    rows = cur.fetchall()
     con.close()
     si = io.StringIO()
     cw = csv.writer(si)
